@@ -1,0 +1,8 @@
+tank
+wserwer
+helicopet
+submarine
+plane
+sun
+moon
+bridge
