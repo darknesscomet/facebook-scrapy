@@ -18,7 +18,7 @@ def _get_proxies():
 input_file = "video_keyword.txt"
 output_file = "fb_video_result.txt"
 use_proxy = False
-concurrency = 4
+concurrency = 2
 result = []
 proxies = _get_proxies()
 
@@ -35,11 +35,11 @@ def _url_encoding(key):
     return result
 
 
-def parse_html(html_source):
+def parse_html(html_source, keyword):
     soup = BeautifulSoup(html_source, "html.parser")
     for link in soup.find_all('a'):
         if link.get("ajaxify") and "video" in link.get("aria-label").lower() and link.get("ajaxify") != "#":
-            print(link.get("ajaxify"))
+            # print(link.get("ajaxify"))
             result.append({"keyword": keyword, "url": "https://www.facebook.com" + link.get("ajaxify")})
 
 
@@ -120,25 +120,35 @@ def scraper(keyword):
                     compare = driver.page_source
                 continue
 
-        parse_html(driver.page_source)
+        parse_html(driver.page_source, keyword)
     except:
         pass
     driver.close()
 
 
-def last_process():
+def output_result_segment(is_create=False):
 
+    global result
     print("total FB results found: ", len(result))
 
-    with open(output_file, 'w', encoding="utf-8") as output:
+    option = 'a'
+    if is_create:
+        option = 'w'
+
+    with open(output_file, option, encoding="utf-8") as output:
         for line in result:
             # output.write(line['keyword'] + '<--->' + line['url'] + '\n')
             output.write(line['url'] + '\n')
+    
+
+    result = []
 
 
 if __name__ == "__main__":
     with open(input_file) as f:
         keywords = [x for x in f.read().split("\n") if x != ""]
+
+    is_create = True
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         for chunk in tqdm(
@@ -150,6 +160,12 @@ if __name__ == "__main__":
                 for keyword in chunk:
                     loop.append(executor.submit(scraper, keyword))
                 [None for thread in concurrent.futures.as_completed(loop)]
+
+                # Do autosave whenever one loop end
+                output_result_segment(is_create)
+
+                is_create = False
+
             except Exception:
                 print("one failed")
-    last_process()
+    output_result_segment()
