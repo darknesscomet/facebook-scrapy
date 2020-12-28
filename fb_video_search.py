@@ -2,6 +2,7 @@ import asyncio
 import concurrent.futures
 import time
 import random
+import pandas as pd
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 from selenium import webdriver
@@ -16,7 +17,7 @@ def _get_proxies():
 
 
 input_file = "video_keyword.txt"
-output_file = "fb_video_result.txt"
+output_file = "fb_video_result.csv"
 use_proxy = False
 concurrency = 2
 result = []
@@ -39,8 +40,14 @@ def parse_html(html_source, keyword):
     soup = BeautifulSoup(html_source, "html.parser")
     for link in soup.find_all('a'):
         if link.get("ajaxify") and "video" in link.get("aria-label").lower() and link.get("ajaxify") != "#":
-            # print(link.get("ajaxify"))
-            result.append({"keyword": keyword, "url": "https://www.facebook.com" + link.get("ajaxify")})
+            try:
+                div = link.find("div", {"class": "_3k0k"})
+                duration = div.contents[1].string
+                result.append(["https://www.facebook.com" + link.get("ajaxify"), duration])
+            except:
+                pass
+            # aria_string = link.get("aria-label")
+            # duration = aria_string[aria_string.find("Duration:") + 9:]
 
 
 def scraper(keyword):
@@ -135,12 +142,9 @@ def output_result_segment(is_create=False):
     if is_create:
         option = 'w'
 
-    with open(output_file, option, encoding="utf-8") as output:
-        for line in result:
-            # output.write(line['keyword'] + '<--->' + line['url'] + '\n')
-            output.write(line['url'] + '\n')
+    df = pd.DataFrame(result, columns=["url", "duration"])
+    df.to_csv(output_file, mode=option, index=False)
     
-
     result = []
 
 

@@ -2,6 +2,7 @@ import asyncio
 import concurrent.futures
 import time
 import random
+import pandas as pd
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 from selenium import webdriver
@@ -16,7 +17,7 @@ def _get_proxies():
 
 
 input_file = "watch_keyword.txt"
-output_file = "fb_watch_result.txt"
+output_file = "fb_watch_result.csv"
 use_proxy = True
 concurrency = 2
 result = []
@@ -26,8 +27,9 @@ proxies = _get_proxies()
 def parse_html(html_source, keyword):
     soup = BeautifulSoup(html_source, "html.parser")
     for link in soup.find_all('a'):
-        if link.get("href") and "video" in link.get("href").lower() and link.get("href") != "#":
-            result.append({"keyword": keyword, "url": "https://www.facebook.com" + link.get("href")})
+        if link.get("href") and "video" in link.get("href").lower() and link.get("href") != "#" and link.has_attr("aria-label"):
+            duration = link.find("div", {"class": "_3qn7 _61-0 _2fyi _3qng _2pq8"}).string
+            result.append(["https://www.facebook.com" + link.get("href"), duration])
 
 
 def scraper(keyword):
@@ -56,6 +58,7 @@ def scraper(keyword):
 
         driver.implicitly_wait(1)
         url = "https://www.facebook.com/watch/search/?query=" + keyword
+        print(url)
         driver.get(url)
 
         # after loding url sleep 2 seconds
@@ -120,10 +123,10 @@ def output_result_segment(is_create=False):
     if is_create:
         option = 'w'
 
-    with open(output_file, option, encoding="utf-8") as output:
-        for line in result:
-            # output.write(line['keyword'] + '<--->' + line['url'] + '\n')
-            output.write(line['url'] + '\n')
+    df = pd.DataFrame(result, columns=["url", "duration"])
+    df.to_csv(output_file, mode=option, index=False)
+    
+    result = []
     
 
     result = []
